@@ -1,0 +1,44 @@
+name: Build player database
+
+on:
+  schedule:
+    - cron: '17 * * * *'   # hourly, at :17 to avoid the top-of-the-hour rush
+  workflow_dispatch:        # "Run workflow" button for a manual rebuild
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build database from FUT.GG
+        run: node scripts/build-db.mjs
+        env:
+          FUT_YEAR: '27'   # change when the next FC edition launches
+          PREV_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
